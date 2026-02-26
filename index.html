@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Challenge</title>
+
+<style>
+body{
+margin:0;
+background:black;
+color:white;
+font-family:Arial;
+text-align:center;
+overflow:hidden;
+}
+
+/* STAR BACKGROUND */
+canvas{
+position:fixed;
+top:0;
+left:0;
+z-index:-1;
+}
+
+/* GAME */
+#game{
+margin-top:40px;
+}
+
+input{
+padding:10px;
+font-size:16px;
+}
+
+button{
+padding:10px 20px;
+font-size:16px;
+cursor:pointer;
+}
+
+/* COUNTDOWN */
+#countdown{
+font-size:50px;
+margin-top:20px;
+font-weight:bold;
+transition:0.3s;
+}
+
+.warning{
+color:red;
+animation:pulse 1s infinite;
+}
+
+@keyframes pulse{
+50%{transform:scale(1.1);}
+}
+
+/* CHARACTER */
+#character{
+position:fixed;
+bottom:20px;
+left:-80px;
+font-size:60px;
+animation:run 8s linear infinite;
+}
+
+@keyframes run{
+0%{left:-80px;}
+100%{left:110%;}
+}
+
+.jump{
+animation:jump 0.6s;
+}
+
+@keyframes jump{
+50%{transform:translateY(-70px);}
+}
+
+/* GAME OVER */
+.gameover{
+display:flex;
+align-items:center;
+justify-content:center;
+height:100vh;
+background:black;
+color:red;
+font-size:60px;
+animation:flash 1s infinite;
+}
+
+@keyframes flash{
+50%{opacity:0.3;}
+}
+
+/* SABOTAGE */
+.sabotage{
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+height:100vh;
+background:black;
+color:red;
+font-size:40px;
+animation:glitch 1s infinite;
+}
+
+@keyframes glitch{
+50%{opacity:0.4;}
+}
+
+/* SCAN */
+.scanScreen{
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+height:100vh;
+}
+
+.fingerprint{
+width:180px;
+height:180px;
+border:3px solid #00ffcc;
+border-radius:50%;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:90px;
+cursor:pointer;
+position:relative;
+box-shadow:0 0 30px #00ffcc;
+}
+
+.scanLine{
+position:absolute;
+width:100%;
+height:4px;
+background:#00ff00;
+top:0;
+animation:scan 2s infinite;
+opacity:0;
+}
+
+@keyframes scan{
+0%{top:0;}
+100%{top:100%;}
+}
+
+/* EYE */
+.eyeContainer{
+display:flex;
+flex-direction:column;
+align-items:center;
+justify-content:center;
+height:100vh;
+background:black;
+}
+
+.eye{
+width:260px;
+height:150px;
+background:white;
+border-radius:130px/80px;
+position:relative;
+overflow:hidden;
+display:flex;
+justify-content:center;
+align-items:center;
+box-shadow:0 0 60px red;
+}
+
+.iris{
+width:110px;
+height:110px;
+background:radial-gradient(circle at 30% 30%, #6ab7ff, #003366 60%, #000);
+border-radius:50%;
+position:absolute;
+display:flex;
+justify-content:center;
+align-items:center;
+transition:0.1s;
+}
+
+.pupil{
+width:50px;
+height:50px;
+background:black;
+border-radius:50%;
+}
+
+.shine{
+width:20px;
+height:20px;
+background:white;
+border-radius:50%;
+position:absolute;
+top:25px;
+left:30px;
+opacity:0.8;
+}
+
+.lid{
+position:absolute;
+width:100%;
+height:100%;
+background:black;
+top:-100%;
+animation:blink 6s infinite;
+}
+
+@keyframes blink{
+0%,45%,55%,100%{top:-100%;}
+50%{top:0;}
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="stars"></canvas>
+
+<div id="game">
+<h2 id="riddle"></h2>
+<input type="text" id="answer">
+<button onclick="checkAnswer()">Answer</button>
+<p id="attempts"></p>
+<div id="countdown"></div>
+</div>
+
+<div id="character">🏃</div>
+
+<script>
+
+/* STAR BACKGROUND */
+let canvas=document.getElementById("stars");
+let ctx=canvas.getContext("2d");
+canvas.width=window.innerWidth;
+canvas.height=window.innerHeight;
+
+let stars=[];
+for(let i=0;i<200;i++){
+stars.push({
+x:Math.random()*canvas.width,
+y:Math.random()*canvas.height,
+size:Math.random()*2,
+speed:Math.random()*1
+});
+}
+
+function drawStars(){
+ctx.clearRect(0,0,canvas.width,canvas.height);
+ctx.fillStyle="white";
+stars.forEach(star=>{
+ctx.beginPath();
+ctx.arc(star.x,star.y,star.size,0,Math.PI*2);
+ctx.fill();
+star.y+=star.speed;
+if(star.y>canvas.height){
+star.y=0;
+star.x=Math.random()*canvas.width;
+}
+});
+requestAnimationFrame(drawStars);
+}
+drawStars();
+
+/* ESC */
+document.addEventListener("keydown",function(e){
+if(e.key==="Escape"){
+document.body.innerHTML=
+"<div class='sabotage'>Error 404<br>Usted ha sido saboteado por mí...<br>Te vigilo en todo momento...<br>muajajajajaja</div>";
+}
+});
+
+/* RIDDLES */
+let riddles=[
+{q:"What has keys but no locks?",a:"piano"},
+{q:"What runs but never walks?",a:"water"},
+{q:"The more you take, the more you leave behind.",a:"footsteps"},
+{q:"What has hands but cannot clap?",a:"clock"},
+{q:"What has a heart that doesn't beat?",a:"artichoke"}
+];
+
+let current=0;
+let wrong=0;
+
+function loadRiddle(){
+document.getElementById("riddle").innerText=riddles[current].q;
+document.getElementById("attempts").innerText="Errors: "+wrong+"/5";
+}
+
+function checkAnswer(){
+let user=document.getElementById("answer").value.toLowerCase();
+let character=document.getElementById("character");
+
+if(user===riddles[current].a){
+character.classList.add("jump");
+setTimeout(()=>character.classList.remove("jump"),600);
+current++;
+if(current>=riddles.length){
+showScan();
+return;
+}
+loadRiddle();
+}else{
+wrong++;
+if(wrong>=5){
+document.body.innerHTML="<div class='gameover'>GAME OVER</div>";
+return;
+}
+document.getElementById("attempts").innerText="Errors: "+wrong+"/5";
+}
+document.getElementById("answer").value="";
+}
+
+loadRiddle();
+
+/* COUNTDOWN */
+let targetDate=new Date("March 9, 2026 00:00:00").getTime();
+
+setInterval(function(){
+let now=new Date().getTime();
+let distance=targetDate-now;
+
+if(distance<0){
+document.body.innerHTML="<h1 style='font-size:60px'>Las puertas están abiertas, disfruta el viaje</h1>";
+}
+
+let days=Math.floor(distance/(1000*60*60*24));
+let hours=Math.floor((distance%(1000*60*60*24))/(1000*60*60));
+let minutes=Math.floor((distance%(1000*60*60))/(1000*60));
+let seconds=Math.floor((distance%(1000*60))/1000);
+
+let cd=document.getElementById("countdown");
+cd.innerHTML=days+"d "+hours+"h "+minutes+"m "+seconds+"s";
+
+if(days<=1){
+cd.classList.add("warning");
+}
+},1000);
+
+/* SCAN */
+function showScan(){
+document.body.innerHTML=
+`<div class="scanScreen">
+<h1>Identity Verification</h1>
+<div class="fingerprint" id="finger">
+🖐
+<div class="scanLine" id="scanLine"></div>
+</div>
+<p>Hold to scan...</p>
+</div>`;
+
+let finger=document.getElementById("finger");
+let scanLine=document.getElementById("scanLine");
+let hold;
+
+finger.addEventListener("mousedown",()=>{
+scanLine.style.opacity=1;
+hold=setTimeout(showFinal,3000);
+});
+
+finger.addEventListener("mouseup",()=>{
+scanLine.style.opacity=0;
+clearTimeout(hold);
+});
+}
+
+/* FINAL EYE */
+function showFinal(){
+document.body.innerHTML=
+`<div class="eyeContainer">
+<h1>Gabriel te vigila</h1>
+<div class="eye">
+<div class="iris" id="iris">
+<div class="pupil"></div>
+<div class="shine"></div>
+</div>
+<div class="lid"></div>
+</div>
+<h2>Mira nada más… esto es un giro inesperado.</h2>
+</div>`;
+
+let iris=document.getElementById("iris");
+let eye=document.querySelector(".eye");
+
+document.addEventListener("mousemove",function(e){
+let rect=eye.getBoundingClientRect();
+let eyeX=rect.left+rect.width/2;
+let eyeY=rect.top+rect.height/2;
+let angle=Math.atan2(e.clientY-eyeY,e.clientX-eyeX);
+let radius=20;
+let x=Math.cos(angle)*radius;
+let y=Math.sin(angle)*radius;
+iris.style.transform=`translate(${x}px,${y}px)`;
+});
+}
+
+</script>
+</body>
+</html>
